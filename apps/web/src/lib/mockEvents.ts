@@ -1,0 +1,71 @@
+import type { Event } from './types'
+
+export const mockEvents: Event[] = [
+  {
+    id: 901,
+    title: 'Operacion Delta Sur',
+    slug: 'operacion-delta-sur',
+    format: 'Bosque',
+    short_description: 'Partida abierta con objetivos, humo y escuadras mixtas.',
+    long_description:
+      'Una jornada pensada para jugadores nuevos y regulares, con briefing temprano, checkpoints y cupos diferenciados para alquiler y gear propio.',
+    event_date: '2026-04-18',
+    starts_at: '09:00',
+    ends_at: '17:00',
+    base_price: 18000,
+    capacity: 80,
+    status: 'published',
+    requires_payment_to_confirm: false,
+    allows_waitlist: true,
+    venue: {
+      id: 1,
+      name: 'Campo Delta',
+      address: 'Pilar, Buenos Aires',
+      rental_equipment: true,
+      parking: true,
+      buffet: true,
+    },
+    owner_profile: {
+      id: 1,
+      organization_name: 'Delta Airsoft Club',
+      slug: 'delta-airsoft-club',
+      status: 'active',
+    },
+    categories: [
+      { name: 'Jugador propio', price: 18000, capacity: 60 },
+      { name: 'Con alquiler', price: 28000, capacity: 20 },
+    ],
+  },
+  {
+    id: 902,
+    title: 'CQB Nocturna Zona Oeste',
+    slug: 'cqb-nocturna-zona-oeste',
+    format: 'CQB',
+    short_description: 'Escenarios cortos, rotacion rapida y cupos limitados.',
+    long_description:
+      'Formato dinamico con rondas cerradas, iluminacion táctica y foco total en ritmo, seguridad y coordinación.',
+    event_date: '2026-04-25',
+    starts_at: '19:30',
+    ends_at: '23:30',
+    base_price: 22000,
+    capacity: 42,
+    status: 'published',
+    requires_payment_to_confirm: true,
+    allows_waitlist: true,
+    venue: {
+      id: 2,
+      name: 'Distrito CQB',
+      address: 'Moron, Buenos Aires',
+      rental_equipment: false,
+      parking: true,
+      buffet: false,
+    },
+    owner_profile: {
+      id: 2,
+      organization_name: 'Distrito CQB',
+      slug: 'distrito-cqb',
+      status: 'active',
+    },
+    categories: [{ name: 'Entrada general', price: 22000, capacity: 42 }],
+  },
+]

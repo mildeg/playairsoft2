@@ -1,0 +1,34 @@
+# Sistema operativo
+.DS_Store
+Thumbs.db
+
+# Editores
+.idea/
+.vscode/
+
+# Variables de entorno locales
+.env
+.env.local
+.env.*.local
+
+# Dependencias
+node_modules/
+vendor/
+
+# Salidas de build
+dist/
+build/
+coverage/
+
+# Laravel
+apps/api/.env
+apps/api/.env.*
+apps/api/.phpunit.result.cache
+apps/api/bootstrap/cache/*.php
+apps/api/public/build/
+apps/api/storage/*.key
+apps/api/storage/logs/*.log
+apps/api/database/*.sqlite
+
+# React / Vite
+apps/web/dist/

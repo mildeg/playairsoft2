@@ -2,8 +2,10 @@
 
 namespace App\Http\Requests\Owner;
 
+use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\Validator;
 
 class StoreEventRequest extends FormRequest
 {
@@ -19,7 +21,8 @@ class StoreEventRequest extends FormRequest
     {
         return [
             'venue_id' => ['required', 'integer', 'exists:venues,id'],
-            'title' => ['required', 'string', 'max:255'],
+            'template_source_event_id' => ['nullable', 'integer', 'exists:events,id'],
+            'title' => ['required', 'string', 'min:6', 'max:255'],
             'format' => ['nullable', 'string', 'max:255'],
             'short_description' => ['required', 'string', 'max:1000'],
             'long_description' => ['nullable', 'string'],
@@ -41,5 +44,24 @@ class StoreEventRequest extends FormRequest
             'categories.*.sort_order' => ['sometimes', 'integer', 'min:0'],
             'categories.*.is_active' => ['sometimes', 'boolean'],
         ];
+    }
+
+    public function withValidator(Validator $validator): void
+    {
+        $validator->after(function (Validator $validator): void {
+            if ($validator->errors()->isNotEmpty()) {
+                return;
+            }
+
+            $eventDate = (string) $this->input('event_date');
+            $today = CarbonImmutable::today()->toDateString();
+
+            if (CarbonImmutable::parse($eventDate)->toDateString() < $today) {
+                $validator->errors()->add(
+                    'event_date',
+                    'No puedes publicar una partida con fecha anterior a hoy.',
+                );
+            }
+        });
     }
 }

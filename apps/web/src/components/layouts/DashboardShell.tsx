@@ -89,18 +89,31 @@ export function DashboardShell({
         <aside className="hidden w-[280px] flex-col border-r border-[#e6e8ea] bg-slate-50 px-5 py-6 lg:flex">
           <div className="rounded-2xl bg-white p-4 shadow-[0px_12px_32px_rgba(44,47,48,0.06)]">
             <div className="flex items-center gap-3">
-              <div className="h-12 w-12 overflow-hidden rounded-xl bg-[#2c2f30]">
-                {user.role === 'owner' && user.owner_profile?.avatar_url ? (
-                  <img
-                    alt={user.owner_profile.organization_name}
-                    className="h-full w-full object-cover"
-                    src={user.owner_profile.avatar_url}
-                  />
-                ) : (
-                  <div className="flex h-full w-full items-center justify-center font-black text-white">
-                    {initials || 'PA'}
-                  </div>
-                )}
+              <div className="relative h-12 w-12">
+                <div className="h-full w-full overflow-hidden rounded-xl bg-[#2c2f30]">
+                  {user.role === 'owner' && user.owner_profile?.avatar_url ? (
+                    <img
+                      alt={user.owner_profile.organization_name}
+                      className="h-full w-full object-cover"
+                      src={user.owner_profile.avatar_url}
+                    />
+                  ) : (
+                    <div className="flex h-full w-full items-center justify-center font-black text-white">
+                      {initials || 'PA'}
+                    </div>
+                  )}
+                </div>
+
+                {canChangeAvatar ? (
+                  <button
+                    aria-label="Cambiar avatar"
+                    className="absolute -bottom-1 -right-1 inline-flex h-5 w-5 items-center justify-center rounded-full border border-white bg-[#994100] text-white shadow-sm transition-colors hover:bg-[#863800]"
+                    onClick={() => setShowAvatarModal(true)}
+                    type="button"
+                  >
+                    <span className="material-symbols-outlined text-[12px]">edit</span>
+                  </button>
+                ) : null}
               </div>
               <div>
                 <p className="font-bold text-[#2c2f30]">{user.name}</p>
@@ -111,17 +124,6 @@ export function DashboardShell({
             <div className="mt-4 rounded-xl bg-[#eff1f2] px-3 py-3 text-xs text-[#595c5d]">
               {user.email}
             </div>
-
-            {canChangeAvatar ? (
-              <button
-                className="mt-3 inline-flex items-center gap-1 text-xs font-bold text-[#994100] transition-colors hover:text-[#863800]"
-                onClick={() => setShowAvatarModal(true)}
-                type="button"
-              >
-                Cambiar avatar
-                <span className="material-symbols-outlined text-[16px]">edit</span>
-              </button>
-            ) : null}
           </div>
 
           <nav className="mt-8 space-y-2">

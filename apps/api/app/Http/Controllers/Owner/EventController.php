@@ -37,8 +37,18 @@ class EventController extends Controller
             ->where('owner_profile_id', $ownerProfile->id)
             ->firstOrFail();
 
-        $event = DB::transaction(function () use ($data, $venue, $ownerProfile) {
+        $templateSourceEventId = $data['template_source_event_id'] ?? null;
+
+        if ($templateSourceEventId !== null) {
+            Event::query()
+                ->whereKey($templateSourceEventId)
+                ->where('owner_profile_id', $ownerProfile->id)
+                ->firstOrFail();
+        }
+
+        $event = DB::transaction(function () use ($data, $venue, $ownerProfile, $templateSourceEventId) {
             $event = Event::create([
+                'template_source_event_id' => $templateSourceEventId,
                 'owner_profile_id' => $ownerProfile->id,
                 'venue_id' => $venue->id,
                 'title' => $data['title'],

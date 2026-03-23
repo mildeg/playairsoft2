@@ -21,6 +21,11 @@ type RequestOptions = {
   body?: unknown
 }
 
+export type ApiRequestError = Error & {
+  status?: number
+  errors?: Record<string, string[]>
+}
+
 function isFormDataBody(body: unknown): body is FormData {
   return body instanceof FormData
 }
@@ -57,7 +62,14 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
         ? Object.values(payload.errors).flat().join(' ')
         : 'No se pudo completar la solicitud.')
 
-    throw new Error(message)
+    const requestError = new Error(message) as ApiRequestError
+    requestError.status = response.status
+    requestError.errors =
+      payload && typeof payload === 'object' && payload.errors && typeof payload.errors === 'object'
+        ? (payload.errors as Record<string, string[]>)
+        : undefined
+
+    throw requestError
   }
 
   return payload as T

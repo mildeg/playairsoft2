@@ -257,7 +257,7 @@ export function EventDetailPage() {
   const totalCategoryCapacity =
     event?.categories.reduce((sum, category) => sum + category.capacity, 0) ?? 0
   const topPrice = Number(event?.base_price ?? event?.categories?.[0]?.price ?? 0)
-  const canEditVenueFromEvent =
+  const canEditEventFromDetail =
     Boolean(event) &&
     user?.role === 'owner' &&
     Boolean(user.owner_profile?.id) &&
@@ -305,7 +305,17 @@ export function EventDetailPage() {
         {event ? (
           <>
             <div className="flex-1 space-y-10">
-              <section className="space-y-6">
+              <section className="relative space-y-6">
+                {canEditEventFromDetail ? (
+                  <div className="pointer-events-none absolute left-0 top-0 z-20 -translate-y-[calc(100%+12px)]">
+                    <Link
+                      className="pointer-events-auto inline-flex items-center rounded-xl border border-[#dadddf] bg-white px-4 py-2 text-sm font-bold text-[#2c2f30] transition-colors hover:bg-[#eff1f2]"
+                      to={`/mis-partidas/${event.id}/editar`}
+                    >
+                      Ir a vista de edición
+                    </Link>
+                  </div>
+                ) : null}
                 <div className="relative aspect-[21/9] w-full overflow-hidden rounded-xl bg-[#eff1f2]">
                   <img
                     alt={event.title}
@@ -464,19 +474,18 @@ export function EventDetailPage() {
                       <span className="material-symbols-outlined">groups</span>
                     </div>
                     <div>
-                      <p className="font-bold text-[#2c2f30]">
-                        {event.owner_profile?.organization_name ?? 'Organizador verificado'}
-                      </p>
                       {event.owner_profile?.slug ? (
                         <Link
-                          className="mt-2 inline-flex items-center gap-1 text-xs font-bold text-[#994100] hover:text-[#863800]"
+                          className="inline-block cursor-pointer font-bold text-[#2c2f30] transition-colors hover:text-[#994100] hover:underline"
                           to={`/owners/${event.owner_profile.slug}`}
                         >
-                          Conocer organizador
-                          <span className="material-symbols-outlined text-[16px]">arrow_forward</span>
+                          {event.owner_profile.organization_name}
                         </Link>
-                      ) : null}
-                      <p className="text-xs text-[#595c5d]">Publicación activa</p>
+                      ) : (
+                        <p className="font-bold text-[#2c2f30]">
+                          {event.owner_profile?.organization_name ?? 'Organizador verificado'}
+                        </p>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -486,7 +495,12 @@ export function EventDetailPage() {
                     Predio y servicios
                   </h2>
                   <div className="space-y-3 text-sm text-[#595c5d]">
-                    <p className="font-bold text-[#2c2f30]">{event.venue.name}</p>
+                    <Link
+                      className="inline-block cursor-pointer font-bold text-[#2c2f30] transition-colors hover:text-[#994100] hover:underline"
+                      to={`/campos/${event.venue.id}`}
+                    >
+                      {event.venue.name}
+                    </Link>
                     <p>{event.venue.address}</p>
                     <p>
                       {[
@@ -497,22 +511,6 @@ export function EventDetailPage() {
                         .filter(Boolean)
                         .join(' · ') || 'Sin servicios destacados'}
                     </p>
-                    <Link
-                      className="inline-flex items-center gap-1 text-xs font-bold text-[#994100] hover:text-[#863800]"
-                      to={`/campos/${event.venue.id}`}
-                    >
-                      Ver campo
-                      <span className="material-symbols-outlined text-[16px]">arrow_forward</span>
-                    </Link>
-                    {canEditVenueFromEvent ? (
-                      <Link
-                        className="inline-flex items-center gap-1 text-xs font-bold text-[#994100] hover:text-[#863800]"
-                        to={`/mis-predios/${event.venue.id}/editar`}
-                      >
-                        Editar campo
-                        <span className="material-symbols-outlined text-[16px]">edit</span>
-                      </Link>
-                    ) : null}
                   </div>
                 </div>
               </section>

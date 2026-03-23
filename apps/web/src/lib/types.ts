@@ -83,6 +83,7 @@ export type EventImage = {
 export type Event = {
   id: number
   public_id: string
+  template_source_event_id?: number | null
   title: string
   slug: string
   format?: string | null

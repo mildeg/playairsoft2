@@ -4,7 +4,7 @@ import { toast } from 'sonner'
 import { useAuth } from '../auth/useAuth'
 import { DashboardSkeleton } from '../components/feedback/DashboardSkeleton'
 import { DashboardShell } from '../components/layouts/DashboardShell'
-import { api } from '../lib/api'
+import { api, type ApiRequestError } from '../lib/api'
 import type { Event, EventImage, Venue } from '../lib/types'
 
 const initialForm = {
@@ -26,6 +26,7 @@ const initialForm = {
 }
 
 type FormState = typeof initialForm
+type FieldErrors = Record<string, string>
 type EventImageDraft = {
   id: string
   file: File
@@ -43,9 +44,42 @@ const MAX_IMAGE_HEIGHT = 1920
 const THUMBNAIL_SIZE = 320
 const JPEG_QUALITY = 0.82
 
+function getTodayDateInputValue() {
+  const today = new Date()
+  const year = today.getFullYear()
+  const month = String(today.getMonth() + 1).padStart(2, '0')
+  const day = String(today.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
+
 function toDateInput(value: string | null | undefined) {
   if (!value) return ''
   return value.slice(0, 10)
+}
+
+function extractFieldErrors(requestError: unknown): FieldErrors {
+  if (
+    !requestError ||
+    typeof requestError !== 'object' ||
+    !('errors' in requestError) ||
+    !requestError.errors ||
+    typeof requestError.errors !== 'object'
+  ) {
+    return {}
+  }
+
+  const normalized: FieldErrors = {}
+  const apiErrors = requestError.errors as Record<string, string[]>
+
+  for (const [field, messages] of Object.entries(apiErrors)) {
+    const message = Array.isArray(messages) ? messages[0] : null
+
+    if (typeof message === 'string' && message.trim()) {
+      normalized[field] = message
+    }
+  }
+
+  return normalized
 }
 
 function getScaledSize(width: number, height: number, maxWidth: number, maxHeight: number) {
@@ -179,9 +213,111 @@ export function OwnerEventEditPage() {
   const [draggingImageId, setDraggingImageId] = useState<number | null>(null)
   const [dragOverImageId, setDragOverImageId] = useState<number | null>(null)
   const [error, setError] = useState('')
+  const [fieldErrors, setFieldErrors] = useState<FieldErrors>({})
+  const todayDate = getTodayDateInputValue()
 
+  const formRef = useRef<HTMLFormElement | null>(null)
   const fileInputRef = useRef<HTMLInputElement | null>(null)
   const processingDraftsRef = useRef<EventImageDraft[]>([])
+
+  function getFieldError(field: string) {
+    return fieldErrors[field] ?? ''
+  }
+
+  function clearFieldError(field: string) {
+    setFieldErrors((current) => {
+      if (!current[field]) {
+        return current
+      }
+
+      const next = { ...current }
+      delete next[field]
+      return next
+    })
+  }
+
+  function renderFieldError(field: string) {
+    const message = getFieldError(field)
+
+    return (
+      <div className="min-h-[16px]">
+        {message ? <p className="text-[11px] font-bold text-[#b02500]">{message}</p> : null}
+      </div>
+    )
+  }
+
+  function focusField(field: string) {
+    const selector = `[data-field="${field}"]`
+    const target = formRef.current?.querySelector<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>(selector)
+    target?.focus()
+  }
+
+  function validateForm(): FieldErrors {
+    const nextErrors: FieldErrors = {}
+    const allowedStatuses = new Set(['draft', 'published', 'cancelled', 'completed'])
+    const capacityValue = Number(form.capacity)
+    const basePriceValue = form.base_price === '' ? null : Number(form.base_price)
+
+    if (!form.venue_id) {
+      nextErrors.venue_id = 'Selecciona un predio.'
+    }
+
+    if (!form.title.trim()) {
+      nextErrors.title = 'Ingresa un titulo.'
+    } else if (form.title.trim().length < 6) {
+      nextErrors.title = 'El titulo debe tener al menos 6 caracteres.'
+    } else if (form.title.trim().length > 255) {
+      nextErrors.title = 'El titulo no puede superar 255 caracteres.'
+    }
+
+    if (form.format.trim().length > 255) {
+      nextErrors.format = 'El formato no puede superar 255 caracteres.'
+    }
+
+    if (!form.short_description.trim()) {
+      nextErrors.short_description = 'Ingresa una descripcion corta.'
+    } else if (form.short_description.trim().length > 1000) {
+      nextErrors.short_description = 'La descripcion corta no puede superar 1000 caracteres.'
+    }
+
+    if (!form.event_date) {
+      nextErrors.event_date = 'Selecciona una fecha.'
+    } else if (form.event_date < todayDate) {
+      nextErrors.event_date = 'No puedes publicar una partida con fecha anterior a hoy.'
+    }
+
+    if (!form.starts_at) {
+      nextErrors.starts_at = 'Ingresa el horario de inicio.'
+    }
+
+    if (!form.ends_at) {
+      nextErrors.ends_at = 'Ingresa el horario de cierre.'
+    } else if (form.starts_at && form.ends_at <= form.starts_at) {
+      nextErrors.ends_at = 'La hora de cierre debe ser posterior a la de inicio.'
+    }
+
+    if (!Number.isFinite(capacityValue) || capacityValue < 1) {
+      nextErrors.capacity = 'La capacidad debe ser mayor o igual a 1.'
+    }
+
+    if (basePriceValue !== null && (!Number.isFinite(basePriceValue) || basePriceValue < 0)) {
+      nextErrors.base_price = 'El precio base no puede ser negativo.'
+    }
+
+    if (!allowedStatuses.has(form.status)) {
+      nextErrors.status = 'Selecciona un estado valido.'
+    }
+
+    if (form.cancellation_deadline) {
+      if (form.cancellation_deadline < todayDate) {
+        nextErrors.cancellation_deadline = 'La fecha de cancelacion no puede ser anterior a hoy.'
+      } else if (form.event_date && form.cancellation_deadline > form.event_date) {
+        nextErrors.cancellation_deadline = 'Debe ser igual o anterior a la fecha de partida.'
+      }
+    }
+
+    return nextErrors
+  }
 
   useEffect(() => {
     processingDraftsRef.current = processingDrafts
@@ -446,8 +582,20 @@ export function OwnerEventEditPage() {
       return
     }
 
-    setIsSubmitting(true)
     setError('')
+    const nextFieldErrors = validateForm()
+    setFieldErrors(nextFieldErrors)
+
+    if (Object.keys(nextFieldErrors).length > 0) {
+      const firstErrorField = Object.keys(nextFieldErrors)[0]
+      toast.error(nextFieldErrors[firstErrorField] ?? 'Revisa los campos marcados.')
+      focusField(firstErrorField)
+
+      return
+    }
+
+    setFieldErrors({})
+    setIsSubmitting(true)
 
     try {
       const payload = {
@@ -473,11 +621,22 @@ export function OwnerEventEditPage() {
       toast.success(response.message)
       navigate('/mis-partidas')
     } catch (submitError) {
-      setError(
+      const requestFieldErrors = extractFieldErrors(submitError)
+      if (Object.keys(requestFieldErrors).length > 0) {
+        setFieldErrors(requestFieldErrors)
+      }
+
+      const submitMessage =
         submitError instanceof Error
           ? submitError.message
-          : 'No se pudo actualizar la publicacion.',
-      )
+          : 'No se pudo actualizar la publicacion.'
+
+      setError(submitMessage)
+      toast.error(submitMessage)
+
+      if ((submitError as ApiRequestError)?.status === 422 && Object.keys(requestFieldErrors).length > 0) {
+        focusField(Object.keys(requestFieldErrors)[0])
+      }
     } finally {
       setIsSubmitting(false)
     }
@@ -511,16 +670,24 @@ export function OwnerEventEditPage() {
 
         <form
           className="space-y-5 rounded-2xl bg-white p-6 shadow-[0px_12px_32px_rgba(44,47,48,0.06)]"
+          noValidate
           onSubmit={handleSubmit}
+          ref={formRef}
         >
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
             <div className="space-y-1.5">
+              {renderFieldError('title')}
               <label className="text-[11px] font-bold uppercase tracking-widest text-[#595c5d]">
                 Titulo
               </label>
               <input
                 className="w-full rounded-lg border-none bg-[#eff1f2] px-4 py-3 text-sm focus:ring-0"
-                onChange={(e) => setForm((current) => ({ ...current, title: e.target.value }))}
+                data-field="title"
+                onChange={(e) => {
+                  clearFieldError('title')
+                  setForm((current) => ({ ...current, title: e.target.value }))
+                }}
+                minLength={6}
                 required
                 type="text"
                 value={form.title}
@@ -528,14 +695,17 @@ export function OwnerEventEditPage() {
             </div>
 
             <div className="space-y-1.5">
+              {renderFieldError('venue_id')}
               <label className="text-[11px] font-bold uppercase tracking-widest text-[#595c5d]">
                 Predio
               </label>
               <select
                 className="w-full rounded-lg border-none bg-[#eff1f2] px-4 py-3 text-sm focus:ring-0"
-                onChange={(e) =>
+                data-field="venue_id"
+                onChange={(e) => {
+                  clearFieldError('venue_id')
                   setForm((current) => ({ ...current, venue_id: e.target.value }))
-                }
+                }}
                 required
                 value={form.venue_id}
               >
@@ -549,24 +719,34 @@ export function OwnerEventEditPage() {
             </div>
 
             <div className="space-y-1.5">
+              {renderFieldError('format')}
               <label className="text-[11px] font-bold uppercase tracking-widest text-[#595c5d]">
                 Formato
               </label>
               <input
                 className="w-full rounded-lg border-none bg-[#eff1f2] px-4 py-3 text-sm focus:ring-0"
-                onChange={(e) => setForm((current) => ({ ...current, format: e.target.value }))}
+                data-field="format"
+                onChange={(e) => {
+                  clearFieldError('format')
+                  setForm((current) => ({ ...current, format: e.target.value }))
+                }}
                 type="text"
                 value={form.format}
               />
             </div>
 
             <div className="space-y-1.5">
+              {renderFieldError('status')}
               <label className="text-[11px] font-bold uppercase tracking-widest text-[#595c5d]">
                 Estado
               </label>
               <select
                 className="w-full rounded-lg border-none bg-[#eff1f2] px-4 py-3 text-sm focus:ring-0"
-                onChange={(e) => setForm((current) => ({ ...current, status: e.target.value }))}
+                data-field="status"
+                onChange={(e) => {
+                  clearFieldError('status')
+                  setForm((current) => ({ ...current, status: e.target.value }))
+                }}
                 value={form.status}
               >
                 <option value="draft">Borrador</option>
@@ -578,14 +758,17 @@ export function OwnerEventEditPage() {
           </div>
 
           <div className="space-y-1.5">
+            {renderFieldError('short_description')}
             <label className="text-[11px] font-bold uppercase tracking-widest text-[#595c5d]">
               Descripcion corta
             </label>
             <textarea
               className="min-h-20 w-full rounded-lg border-none bg-[#eff1f2] px-4 py-3 text-sm focus:ring-0"
-              onChange={(e) =>
+              data-field="short_description"
+              onChange={(e) => {
+                clearFieldError('short_description')
                 setForm((current) => ({ ...current, short_description: e.target.value }))
-              }
+              }}
               required
               value={form.short_description}
             />
@@ -606,13 +789,23 @@ export function OwnerEventEditPage() {
 
           <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
             <div className="space-y-1.5">
+              {renderFieldError('event_date')}
               <label className="text-[11px] font-bold uppercase tracking-widest text-[#595c5d]">
                 Fecha
               </label>
               <input
                 className="w-full rounded-lg border-none bg-[#eff1f2] px-4 py-3 text-sm focus:ring-0"
+                data-field="event_date"
+                min={todayDate}
                 onChange={(e) =>
-                  setForm((current) => ({ ...current, event_date: e.target.value }))
+                  setForm((current) => {
+                    const nextDate = e.target.value
+
+                    clearFieldError('event_date')
+                    clearFieldError('cancellation_deadline')
+
+                    return { ...current, event_date: nextDate }
+                  })
                 }
                 required
                 type="date"
@@ -620,28 +813,35 @@ export function OwnerEventEditPage() {
               />
             </div>
             <div className="space-y-1.5">
+              {renderFieldError('starts_at')}
               <label className="text-[11px] font-bold uppercase tracking-widest text-[#595c5d]">
                 Inicio
               </label>
               <input
                 className="w-full rounded-lg border-none bg-[#eff1f2] px-4 py-3 text-sm focus:ring-0"
-                onChange={(e) =>
+                data-field="starts_at"
+                onChange={(e) => {
+                  clearFieldError('starts_at')
+                  clearFieldError('ends_at')
                   setForm((current) => ({ ...current, starts_at: e.target.value }))
-                }
+                }}
                 required
                 type="time"
                 value={form.starts_at}
               />
             </div>
             <div className="space-y-1.5">
+              {renderFieldError('ends_at')}
               <label className="text-[11px] font-bold uppercase tracking-widest text-[#595c5d]">
                 Cierre
               </label>
               <input
                 className="w-full rounded-lg border-none bg-[#eff1f2] px-4 py-3 text-sm focus:ring-0"
-                onChange={(e) =>
+                data-field="ends_at"
+                onChange={(e) => {
+                  clearFieldError('ends_at')
                   setForm((current) => ({ ...current, ends_at: e.target.value }))
-                }
+                }}
                 required
                 type="time"
                 value={form.ends_at}
@@ -651,46 +851,55 @@ export function OwnerEventEditPage() {
 
           <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
             <div className="space-y-1.5">
+              {renderFieldError('capacity')}
               <label className="text-[11px] font-bold uppercase tracking-widest text-[#595c5d]">
                 Capacidad
               </label>
               <input
                 className="w-full rounded-lg border-none bg-[#eff1f2] px-4 py-3 text-sm focus:ring-0"
                 min={1}
-                onChange={(e) =>
+                data-field="capacity"
+                onChange={(e) => {
+                  clearFieldError('capacity')
                   setForm((current) => ({ ...current, capacity: e.target.value }))
-                }
+                }}
                 required
                 type="number"
                 value={form.capacity}
               />
             </div>
             <div className="space-y-1.5">
+              {renderFieldError('base_price')}
               <label className="text-[11px] font-bold uppercase tracking-widest text-[#595c5d]">
                 Precio base
               </label>
               <input
                 className="w-full rounded-lg border-none bg-[#eff1f2] px-4 py-3 text-sm focus:ring-0"
                 min={0}
-                onChange={(e) =>
+                data-field="base_price"
+                onChange={(e) => {
+                  clearFieldError('base_price')
                   setForm((current) => ({ ...current, base_price: e.target.value }))
-                }
+                }}
                 type="number"
                 value={form.base_price}
               />
             </div>
             <div className="space-y-1.5">
+              {renderFieldError('cancellation_deadline')}
               <label className="text-[11px] font-bold uppercase tracking-widest text-[#595c5d]">
                 Cierre de cancelacion
               </label>
               <input
                 className="w-full rounded-lg border-none bg-[#eff1f2] px-4 py-3 text-sm focus:ring-0"
-                onChange={(e) =>
+                data-field="cancellation_deadline"
+                onChange={(e) => {
+                  clearFieldError('cancellation_deadline')
                   setForm((current) => ({
                     ...current,
                     cancellation_deadline: e.target.value,
                   }))
-                }
+                }}
                 type="date"
                 value={form.cancellation_deadline}
               />

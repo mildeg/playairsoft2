@@ -23,6 +23,7 @@ coverage/
 # Laravel
 apps/api/.env
 apps/api/.env.*
+!apps/api/.env.example
 apps/api/.phpunit.result.cache
 apps/api/bootstrap/cache/*.php
 apps/api/public/build/

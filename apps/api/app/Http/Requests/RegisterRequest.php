@@ -25,11 +25,6 @@ class RegisterRequest extends FormRequest
             'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'string', 'email', 'max:255', 'unique:users,email'],
             'password' => ['required', 'string', 'min:8', 'confirmed'],
-            'dni' => ['required', 'string', 'max:32', 'unique:player_profiles,dni'],
-            'age' => ['required', 'integer', 'min:18', 'max:99'],
-            'phone' => ['required', 'string', 'max:50'],
-            'city' => ['required', 'string', 'max:255'],
-            'emergency_contact' => ['required', 'string', 'max:255'],
             'terms_document_id' => ['required', 'integer', 'exists:terms_documents,id'],
             'accept_terms' => ['accepted'],
         ];

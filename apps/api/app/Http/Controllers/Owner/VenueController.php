@@ -18,6 +18,7 @@ class VenueController extends Controller
 
         $venues = Venue::query()
             ->where('owner_profile_id', $ownerProfile->id)
+            ->with(['district', 'city.province.country', 'images'])
             ->withCount('events')
             ->latest()
             ->paginate(15);
@@ -34,6 +35,12 @@ class VenueController extends Controller
             'name' => $request->string('name')->toString(),
             'description' => $request->input('description'),
             'address' => $request->string('address')->toString(),
+            'city_id' => $request->integer('city_id'),
+            'district_id' => $request->input('district_id'),
+            'street' => $request->input('street'),
+            'street_number' => $request->input('street_number'),
+            'postal_code' => $request->input('postal_code'),
+            'formatted_address' => $request->input('formatted_address'),
             'latitude' => $request->input('latitude'),
             'longitude' => $request->input('longitude'),
             'rental_equipment' => $request->boolean('rental_equipment'),
@@ -44,7 +51,7 @@ class VenueController extends Controller
 
         return response()->json([
             'message' => 'Predio creado.',
-            'data' => $venue,
+            'data' => $venue->load(['district', 'city.province.country', 'images']),
         ], Response::HTTP_CREATED);
     }
 
@@ -54,7 +61,7 @@ class VenueController extends Controller
         $this->ensureOwnership($venue, $ownerProfile->id);
 
         return response()->json([
-            'data' => $venue->loadCount('events'),
+            'data' => $venue->load(['district', 'city.province.country', 'images'])->loadCount('events'),
         ]);
     }
 
@@ -68,7 +75,7 @@ class VenueController extends Controller
 
         return response()->json([
             'message' => 'Predio actualizado.',
-            'data' => $venue->fresh()->loadCount('events'),
+            'data' => $venue->fresh()->load(['district', 'city.province.country', 'images'])->loadCount('events'),
         ]);
     }
 

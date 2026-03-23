@@ -3,6 +3,7 @@ import type { Event } from './types'
 export const mockEvents: Event[] = [
   {
     id: 901,
+    public_id: '01JQ0MOCKEVENT901PUBLICID00',
     title: 'Operacion Delta Sur',
     slug: 'operacion-delta-sur',
     format: 'Bosque',
@@ -38,6 +39,7 @@ export const mockEvents: Event[] = [
   },
   {
     id: 902,
+    public_id: '01JQ0MOCKEVENT902PUBLICID00',
     title: 'CQB Nocturna Zona Oeste',
     slug: 'cqb-nocturna-zona-oeste',
     format: 'CQB',

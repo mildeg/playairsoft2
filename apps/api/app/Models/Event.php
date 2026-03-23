@@ -7,12 +7,22 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Str;
 
 class Event extends Model
 {
     use HasFactory;
 
     protected $guarded = [];
+
+    protected static function booted(): void
+    {
+        static::creating(function (Event $event): void {
+            if (! $event->public_id) {
+                $event->public_id = (string) Str::ulid();
+            }
+        });
+    }
 
     protected function casts(): array
     {
@@ -43,5 +53,10 @@ class Event extends Model
     public function registrations(): HasMany
     {
         return $this->hasMany(Registration::class);
+    }
+
+    public function images(): HasMany
+    {
+        return $this->hasMany(EventImage::class)->orderBy('sort_order')->orderBy('id');
     }
 }

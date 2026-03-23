@@ -21,7 +21,14 @@ class PlayerRegistrationController extends Controller
     {
         $registrations = Registration::query()
             ->where('player_id', $request->user()->id)
-            ->with(['event.venue', 'category', 'ticket'])
+            ->with([
+                'event.venue.district',
+                'event.venue.city.province.country',
+                'event.categories',
+                'event.ownerProfile',
+                'category',
+                'ticket',
+            ])
             ->latest()
             ->paginate(12);
 
@@ -32,6 +39,7 @@ class PlayerRegistrationController extends Controller
     {
         abort_unless($event->status->value === 'published', Response::HTTP_UNPROCESSABLE_ENTITY, 'La partida no esta disponible para inscribirse.');
         abort_unless($request->user()->role !== UserRole::Admin, Response::HTTP_FORBIDDEN);
+        abort_if($request->user()->playerProfile === null, Response::HTTP_UNPROCESSABLE_ENTITY, 'Completa tu perfil antes de inscribirte a una partida.');
 
         $category = EventCategory::query()
             ->whereKey($request->integer('event_category_id'))
@@ -43,6 +51,13 @@ class PlayerRegistrationController extends Controller
             ->where('event_id', $event->id)
             ->where('player_id', $request->user()->id)
             ->whereNull('cancelled_at')
+            ->first();
+
+        $cancelledRegistration = Registration::query()
+            ->where('event_id', $event->id)
+            ->where('player_id', $request->user()->id)
+            ->whereNotNull('cancelled_at')
+            ->latest('id')
             ->first();
 
         abort_if($existingRegistration !== null, Response::HTTP_UNPROCESSABLE_ENTITY, 'Ya estas inscripto en esta partida.');
@@ -68,17 +83,23 @@ class PlayerRegistrationController extends Controller
             $status = RegistrationStatus::Pending;
         }
 
-        $registration = DB::transaction(function () use ($event, $category, $request, $status, $paymentStatus) {
-            $registration = Registration::create([
+        $registration = DB::transaction(function () use ($event, $category, $request, $status, $paymentStatus, $cancelledRegistration) {
+            $registration = $cancelledRegistration ?? new Registration();
+
+            $registration->fill([
                 'event_id' => $event->id,
                 'player_id' => $request->user()->id,
                 'event_category_id' => $category->id,
                 'status' => $status,
                 'payment_status' => $paymentStatus,
+                'cancelled_at' => null,
+                'cancellation_reason' => null,
             ]);
 
+            $registration->save();
+
             if ($status !== RegistrationStatus::Waitlisted) {
-                $registration->ticket()->create([
+                $ticketData = [
                     'code' => Str::upper(Str::random(10)),
                     'qr_payload' => json_encode([
                         'registration_id' => $registration->id,
@@ -86,10 +107,23 @@ class PlayerRegistrationController extends Controller
                         'player_id' => $request->user()->id,
                     ], JSON_THROW_ON_ERROR),
                     'issued_at' => now(),
-                ]);
+                ];
+
+                if ($registration->ticket()->exists()) {
+                    $registration->ticket()->update($ticketData);
+                } else {
+                    $registration->ticket()->create($ticketData);
+                }
             }
 
-            return $registration->load(['event.venue', 'category', 'ticket']);
+            return $registration->load([
+                'event.venue.district',
+                'event.venue.city.province.country',
+                'event.categories',
+                'event.ownerProfile',
+                'category',
+                'ticket',
+            ]);
         });
 
         return response()->json([
@@ -119,7 +153,14 @@ class PlayerRegistrationController extends Controller
 
         return response()->json([
             'message' => 'Inscripcion cancelada.',
-            'data' => $registration->fresh()->load(['event.venue', 'category', 'ticket']),
+            'data' => $registration->fresh()->load([
+                'event.venue.district',
+                'event.venue.city.province.country',
+                'event.categories',
+                'event.ownerProfile',
+                'category',
+                'ticket',
+            ]),
         ]);
     }
 }

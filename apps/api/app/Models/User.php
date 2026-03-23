@@ -23,6 +23,7 @@ use Laravel\Sanctum\HasApiTokens;
     'social_provider',
     'social_provider_id',
     'last_login_at',
+    'password_setup_completed',
 ])]
 #[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable
@@ -58,6 +59,16 @@ class User extends Authenticatable
     public function registrations(): HasMany
     {
         return $this->hasMany(Registration::class, 'player_id');
+    }
+
+    public function notifications(): HasMany
+    {
+        return $this->hasMany(UserNotification::class)->latest();
+    }
+
+    public function notificationPreferences(): HasOne
+    {
+        return $this->hasOne(UserNotificationPreference::class);
     }
 
     public function termsAcceptances(): HasMany

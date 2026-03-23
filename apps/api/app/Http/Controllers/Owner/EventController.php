@@ -20,7 +20,7 @@ class EventController extends Controller
 
         $events = Event::query()
             ->where('owner_profile_id', $ownerProfile->id)
-            ->with(['venue', 'categories'])
+            ->with(['venue.district', 'venue.city.province.country', 'categories', 'images'])
             ->latest('event_date')
             ->paginate(15);
 
@@ -60,7 +60,7 @@ class EventController extends Controller
 
             $this->syncCategories($event, $data['categories']);
 
-            return $event->load(['venue', 'categories']);
+            return $event->load(['venue.district', 'venue.city.province.country', 'categories', 'images']);
         });
 
         return response()->json([
@@ -75,7 +75,7 @@ class EventController extends Controller
         $this->ensureOwnership($event, $ownerProfile->id);
 
         return response()->json([
-            'data' => $event->load(['venue', 'categories']),
+            'data' => $event->load(['venue.district', 'venue.city.province.country', 'categories', 'images']),
         ]);
     }
 
@@ -131,7 +131,7 @@ class EventController extends Controller
 
         return response()->json([
             'message' => 'Partida actualizada.',
-            'data' => $event->fresh()->load(['venue', 'categories']),
+            'data' => $event->fresh()->load(['venue.district', 'venue.city.province.country', 'categories', 'images']),
         ]);
     }
 

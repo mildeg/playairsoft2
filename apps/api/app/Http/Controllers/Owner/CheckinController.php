@@ -18,12 +18,22 @@ class CheckinController extends Controller
     public function registrations(Request $request): JsonResponse
     {
         $ownerProfile = $request->user()?->ownerProfile;
+        $recentDays = max(1, min(365, $request->integer('recent_days', 0)));
 
         abort_unless($ownerProfile !== null, Response::HTTP_FORBIDDEN);
 
         $registrations = Registration::query()
             ->whereHas('event', function ($query) use ($ownerProfile): void {
                 $query->where('owner_profile_id', $ownerProfile->id);
+            })
+            ->when($request->boolean('published_only'), function ($query): void {
+                $query->whereHas('event', function ($eventQuery): void {
+                    $eventQuery->where('status', 'published');
+                });
+                $query->whereNull('cancelled_at');
+            })
+            ->when($recentDays > 0, function ($query) use ($recentDays): void {
+                $query->where('created_at', '>=', now()->subDays($recentDays));
             })
             ->with(['event.venue', 'player.playerProfile', 'category', 'ticket'])
             ->latest()

@@ -4,7 +4,44 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>app</title>
+    <title>PlayAirsoft - El Marketplace de Airsoft en Argentina</title>
+    <!-- Google Fonts: Manrope -->
+    <link href="https://fonts.googleapis.com" rel="preconnect"/>
+    <link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700;800&amp;display=swap" rel="stylesheet"/>
+    <!-- Tailwind CSS v3 with Plugins -->
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <script>
+      tailwind.config = {
+        darkMode: 'class',
+        theme: {
+          extend: {
+            colors: {
+              primary: '#f48c25', // Safety Orange
+              tactical: '#4b5320', // Olive Drab
+              dark: '#121212',
+              surface: '#1e1e1e'
+            },
+            fontFamily: {
+              sans: ['Manrope', 'sans-serif'],
+            },
+            borderRadius: {
+              'custom': '8px', // Based on ROUND_EIGHT
+            }
+          }
+        }
+      }
+    </script>
+    <style data-purpose="custom-typography">
+      body {
+        font-family: 'Manrope', sans-serif;
+        background-color: #121212;
+        color: #ffffff;
+      }
+      .hero-gradient {
+        background: linear-gradient(0deg, rgba(18,18,18,1) 0%, rgba(18,18,18,0.4) 50%, rgba(18,18,18,0.7) 100%);
+      }
+    </style>
   </head>
   <body>
     <div id="root"></div>

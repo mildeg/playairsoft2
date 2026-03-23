@@ -3,10 +3,13 @@
 namespace Tests\Feature;
 
 use App\Enums\UserRole;
+use App\Models\City;
+use App\Models\District;
 use App\Models\Event;
 use App\Models\OwnerProfile;
 use App\Models\User;
 use App\Models\Venue;
+use Database\Seeders\LocationSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -69,13 +72,23 @@ class BackofficeTest extends TestCase
 
     public function test_owner_can_manage_venues(): void
     {
+        $this->seed(LocationSeeder::class);
+
         $owner = $this->createOwnerUser();
+        $city = City::query()->where('name', 'La Plata')->firstOrFail();
+        $district = District::query()->where('name', 'Gonnet')->firstOrFail();
 
         $createResponse = $this->actingAs($owner, 'sanctum')
             ->postJson('/api/owner/venues', [
                 'name' => 'Predio Sur',
                 'description' => 'Campo con bosque y CQB',
                 'address' => 'Ruta 2 Km 55',
+                'city_id' => $city->id,
+                'district_id' => $district->id,
+                'street' => 'Ruta 2',
+                'street_number' => 'Km 55',
+                'postal_code' => '1897',
+                'formatted_address' => 'Ruta 2 Km 55, Gonnet, La Plata',
                 'latitude' => -34.9205,
                 'longitude' => -57.9550,
                 'rental_equipment' => true,
@@ -86,7 +99,9 @@ class BackofficeTest extends TestCase
 
         $createResponse
             ->assertCreated()
-            ->assertJsonPath('data.name', 'Predio Sur');
+            ->assertJsonPath('data.name', 'Predio Sur')
+            ->assertJsonPath('data.city.name', 'La Plata')
+            ->assertJsonPath('data.district.name', 'Gonnet');
 
         $venue = Venue::query()->where('name', 'Predio Sur')->firstOrFail();
 

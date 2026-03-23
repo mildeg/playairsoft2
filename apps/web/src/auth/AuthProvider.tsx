@@ -1,5 +1,4 @@
 import {
-  createContext,
   useEffect,
   useRef,
   useState,
@@ -7,39 +6,18 @@ import {
 } from 'react'
 import { api } from '../lib/api'
 import type { User } from '../lib/types'
-
-type RegisterInput = {
-  name: string
-  email: string
-  password: string
-  password_confirmation: string
-  dni: string
-  age: number
-  phone: string
-  city: string
-  emergency_contact: string
-  terms_document_id: number
-  accept_terms: boolean
-}
-
-type AuthContextValue = {
-  user: User | null
-  token: string | null
-  isLoading: boolean
-  isAuthenticated: boolean
-  login: (input: { email: string; password: string }) => Promise<void>
-  register: (input: RegisterInput) => Promise<void>
-  logout: () => Promise<void>
-}
-
-export const AuthContext = createContext<AuthContextValue | null>(null)
+import { AuthContext, type RegisterInput } from './AuthContext'
 
 const TOKEN_STORAGE_KEY = 'playairsoft.token'
 
 export function AuthProvider({ children }: PropsWithChildren) {
   const [user, setUser] = useState<User | null>(null)
-  const [token, setToken] = useState<string | null>(null)
-  const [isLoading, setIsLoading] = useState(true)
+  const [token, setToken] = useState<string | null>(() =>
+    window.localStorage.getItem(TOKEN_STORAGE_KEY),
+  )
+  const [isLoading, setIsLoading] = useState(() =>
+    Boolean(window.localStorage.getItem(TOKEN_STORAGE_KEY)),
+  )
   const initialized = useRef(false)
 
   useEffect(() => {
@@ -49,17 +27,12 @@ export function AuthProvider({ children }: PropsWithChildren) {
 
     initialized.current = true
 
-    const storedToken = window.localStorage.getItem(TOKEN_STORAGE_KEY)
-
-    if (!storedToken) {
-      setIsLoading(false)
+    if (!token) {
       return
     }
 
-    setToken(storedToken)
-
     void api
-      .getCurrentUser(storedToken)
+      .getCurrentUser(token)
       .then((response) => {
         setUser(response.user)
       })
@@ -70,7 +43,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
       .finally(() => {
         setIsLoading(false)
       })
-  }, [])
+  }, [token])
 
   async function login(input: { email: string; password: string }) {
     const response = await api.login(input)
@@ -85,6 +58,23 @@ export function AuthProvider({ children }: PropsWithChildren) {
 
     window.localStorage.setItem(TOKEN_STORAGE_KEY, response.token)
     setToken(response.token)
+    setUser(response.user)
+  }
+
+  async function completeTokenLogin(nextToken: string) {
+    window.localStorage.setItem(TOKEN_STORAGE_KEY, nextToken)
+    setToken(nextToken)
+
+    const response = await api.getCurrentUser(nextToken)
+    setUser(response.user)
+  }
+
+  async function refreshUser() {
+    if (!token) {
+      return
+    }
+
+    const response = await api.getCurrentUser(token)
     setUser(response.user)
   }
 
@@ -107,6 +97,8 @@ export function AuthProvider({ children }: PropsWithChildren) {
         isAuthenticated: Boolean(user && token),
         login,
         register,
+        completeTokenLogin,
+        refreshUser,
         logout,
       }}
     >

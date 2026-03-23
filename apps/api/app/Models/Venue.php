@@ -28,8 +28,23 @@ class Venue extends Model
         return $this->belongsTo(OwnerProfile::class);
     }
 
+    public function city(): BelongsTo
+    {
+        return $this->belongsTo(City::class);
+    }
+
+    public function district(): BelongsTo
+    {
+        return $this->belongsTo(District::class);
+    }
+
     public function events(): HasMany
     {
         return $this->hasMany(Event::class);
+    }
+
+    public function images(): HasMany
+    {
+        return $this->hasMany(VenueImage::class)->orderBy('sort_order')->orderBy('id');
     }
 }
